@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>body { margin: 0; overflow: hidden; background: black; }</style>
+</head>
+<body>
+<script type="importmap">
+  { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+    import * as THREE from 'three';
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // 별 생성
+    const stars = [];
+    for(let i=0; i<2000; i++) {
+        const star = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({color: 0xffffff}));
+        star.position.set((Math.random()-0.5)*100, (Math.random()-0.5)*100, (Math.random()-0.5)*100);
+        scene.add(star);
+        stars.push(star);
+    }
+
+    camera.position.z = 5;
+
+    function animate() {
+        requestAnimationFrame(animate);
+        // 별들이 앞으로 쏟아지는 듯한 이동
+        stars.forEach(s => {
+            s.position.z += 0.5;
+            if(s.position.z > 50) s.position.z = -50;
+        });
+        renderer.render(scene, camera);
+    }
+    animate();
+</script>
+</body>
+</html>
