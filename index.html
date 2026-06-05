@@ -1,46 +1,107 @@
 <!DOCTYPE html>
-<html>
-<head><style>body { margin: 0; overflow: hidden; background: black; }</style></head>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>제민 비전 트레이닝 - 우주 워프</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
 <body>
-<script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }</script>
-<script type="module">
-    import * as THREE from 'three';
+    <canvas id="warpCanvas"></canvas>
+<script>
+const canvas = document.getElementById('warpCanvas');
+const ctx = canvas.getContext('2d');
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+let width, height, centerX, centerY;
+let stars = [];
+const numStars = 1000; // 별의 개수 (성능에 따라 조절 가능)
+let speed = 5; // 워프 속도
 
-    // 별들을 관리할 배열
-    const stars = [];
-    for(let i=0; i<3000; i++) {
-        const star = new THREE.Mesh(
-            new THREE.CircleGeometry(0.1, 8), 
-            new THREE.MeshBasicMaterial({color: 0xffffff})
-        );
-        // 별들의 초기 위치를 더 넓게 배치 (공간감 확보)
-        star.position.set((Math.random()-0.5)*200, (Math.random()-0.5)*200, (Math.random()-0.5)*200);
-        scene.add(star);
-        stars.push(star);
+// 별 객체 정의
+function Star() {
+    this.x = Math.random() * width - centerX; // x 위치 (중심 기준)
+    this.y = Math.random() * height - centerY; // y 위치 (중심 기준)
+    this.z = Math.random() * width; // 깊이 (처음엔 멀리 배치)
+    this.pz = this.z; // 이전 깊이 (선을 그리기 위함)
+}
+
+// 별 업데이트 및 그리기
+Star.prototype.update = function() {
+    this.z = this.z - speed; // z축으로 이동 (앞으로 다가옴)
+    
+    // 별이 화면 앞으로 지나가면 뒤로 재배치
+    if (this.z < 1) {
+        this.z = width;
+        this.x = Math.random() * width - centerX;
+        this.y = Math.random() * height - centerY;
+        this.pz = this.z;
     }
+};
 
-    camera.position.z = 20;
+Star.prototype.show = function() {
+    // 3D 투영 (Perspectiv Projection) 핵심!
+    // z값이 작아질수록 (가까워질수록) x, y 좌표가 화면 외곽으로 멀어짐
+    const sx = (this.x / this.z) * centerX + centerX;
+    const sy = (this.y / this.z) * centerY + centerY;
+    
+    // 별의 크기도 가까워질수록 커짐
+    const r = (1 - this.z / width) * 2.5;
 
-    function animate() {
-        requestAnimationFrame(animate);
-        stars.forEach(s => {
-            s.position.z += 1.0; // 속도
-            // 카메라 뒤로 지나간 별을 다시 뒤쪽으로 재배치
-            if(s.position.z > 20) s.position.z = -200;
-            
-            // 핵심: 원근감 효과 (거리에 따라 크기 조절)
-            let scale = Math.max(0.1, (20 - s.position.z) / 40);
-            s.scale.set(scale, scale, scale);
-        });
-        renderer.render(scene, camera);
+    // 이전 위치 (p-값)
+    const px = (this.x / this.pz) * centerX + centerX;
+    const py = (this.y / this.pz) * centerY + centerY;
+
+    this.pz = this.z;
+
+    // 별 그리기 (속도감을 위해 선으로 표현)
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(sx, sy);
+    ctx.lineWidth = r;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${1 - this.z / width})`; // 가까울수록 선명하게
+    ctx.stroke();
+};
+
+// 화면 크기 조정
+function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    centerX = width / 2;
+    centerY = height / 2;
+}
+
+// 초기화 및 애니메이션 루프
+function init() {
+    resize();
+    for (let i = 0; i < numStars; i++) {
+        stars[i] = new Star();
     }
-    animate();
+}
+
+function animate() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // 잔상 효과
+    ctx.fillRect(0, 0, width, height);
+    
+    for (let i = 0; i < numStars; i++) {
+        stars[i].update();
+        stars[i].show();
+    }
+    requestAnimationFrame(animate);
+}
+
+// 이벤트 리스너
+window.addEventListener('resize', resize);
+// 속도 조절 (마우스 휠이나 터치)
+window.addEventListener('wheel', (e) => {
+    speed += e.deltaY * -0.01;
+    speed = Math.max(1, Math.min(speed, 50)); // 최소/최대 속도 제한
+});
+
+init();
+animate();
+
 </script>
 </body>
 </html>
